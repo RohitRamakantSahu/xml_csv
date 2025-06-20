@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import xml.etree.ElementTree as ET
 from io import BytesIO
+import re
 
 st.title("XML/Excel/Google Sheets Product Feed to Meta/Facebook Catalog CSV")
 
@@ -16,12 +17,22 @@ excel_file = st.file_uploader("Or upload an Excel file", type=["xlsx", "xls"])
 gsheet_url = st.text_input("Or paste a Google Sheets URL (must be public or shared with 'Anyone with the link'):", "")
 
 def gsheet_to_csv_url(url):
-    # Handles both /edit and /view links
-    if '/edit' in url:
-        url = url.split('/edit')[0]
-    elif '/view' in url:
-        url = url.split('/view')[0]
-    return url + '/export?format=csv'
+    # Use regex to robustly extract key and gid from any Google Sheet URL format
+    key_match = re.search(r'spreadsheets/d/([^/]+)', url)
+    if not key_match:
+        st.error(f"Could not extract Google Sheet key from URL: {url}")
+        raise ValueError("Invalid Google Sheets URL")
+    
+    key = key_match.group(1)
+    
+    # Extract gid if present
+    gid_match = re.search(r'[#&?]gid=(\d+)', url)
+    gid_part = ''
+    if gid_match:
+        gid = gid_match.group(1)
+        gid_part = f'&gid={gid}'
+        
+    return f'https://docs.google.com/spreadsheets/d/{key}/export?format=csv{gid_part}'
 
 # Define your required columns
 csv_columns = [
